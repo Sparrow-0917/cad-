@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAD现状用地矢量化工作流总结</title>
+<style>
+body{font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;background:#f6f8fb;color:#1f2937;margin:0;line-height:1.7}
+.wrap{max-width:1050px;margin:0 auto;padding:32px 22px 60px}
+.hero,.card{background:#fff;border:1px solid #dbe3ee;border-radius:16px;padding:24px 26px;margin:18px 0}
+.hero{background:linear-gradient(135deg,#f8fbff,#eef4ff)}
+h1{margin:0 0 10px;font-size:30px}h2{font-size:21px;margin:0 0 12px}h3{font-size:17px;margin:18px 0 8px}
+p{margin:8px 0}ul,ol{padding-left:22px}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:14px}
+th,td{border:1px solid #dbe3ee;padding:10px 12px;vertical-align:top}
+th{background:#f2f6fb;text-align:left}
+code{background:#f2f4f7;padding:2px 6px;border-radius:6px;font-family:Consolas,monospace}
+pre{background:#0f172a;color:#e5e7eb;padding:14px 16px;border-radius:12px;overflow:auto}
+.note{border-left:4px solid #2563eb;background:#eff6ff;padding:12px 14px;border-radius:8px}
+.warn{border-left:4px solid #f59e0b;background:#fff7ed;padding:12px 14px;border-radius:8px}
+.bad{border-left:4px solid #dc2626;background:#fef2f2;padding:12px 14px;border-radius:8px}
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.step{background:#f8fafc;border:1px solid #dbe3ee;border-radius:12px;padding:14px}
+.step b{color:#1d4ed8}
+.footer{text-align:center;color:#6b7280;font-size:13px;margin-top:28px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<section class="hero">
+<h1>CAD现状用地矢量化工作流总结</h1>
+<p>适用于：已有底图 + 已配准现状参考图 + AutoCAD + AutoLISP + Remote Desktop Commander / Codex 辅助。</p>
+</section>
+
+<section class="card">
+<h2>1. 项目文件结构</h2>
+<pre>C:\Users\SPARRIOW\Desktop\总体规划\cad 底图配置\</pre>
+<table>
+<tr><th>文件</th><th>作用</th></tr>
+<tr><td><code>01_底图与现状图精准配准.dwg</code></td><td>后续所有描绘工作的基准 CAD。</td></tr>
+<tr><td><code>现状参考.jpg</code></td><td>用地分类、色块、边界与图例的主要判读依据。</td></tr>
+<tr><td><code>工作底图.jpg</code></td><td>道路、水系、地形等空间骨架参照。</td></tr>
+<tr><td><code>现状用地绘制工具.lsp</code></td><td>自动创建图层、颜色、图例和辅助命令。</td></tr>
+</table>
+<div class="note"><b>核心原则：</b>配准完成后，不再随意 MOVE / ROTATE / SCALE / ALIGN 底图与参考图。</div>
+</section>
+
+<section class="card">
+<h2>2. 总体工作流</h2>
+<div class="flow">
+<div class="step"><b>Step 1</b><br>检查文件和路径</div>
+<div class="step"><b>Step 2</b><br>锁定已配准底图</div>
+<div class="step"><b>Step 3</b><br>复用中文用地图层</div>
+<div class="step"><b>Step 4</b><br>逐区精确描边</div>
+<div class="step"><b>Step 5</b><br>闭合检查 + SOLID填充</div>
+<div class="step"><b>Step 6</b><br>分区校核与纠错</div>
+<div class="step"><b>Step 7</b><br>阶段保存与最终输出</div>
+</div>
+</section>
+
+<section class="card">
+<h2>3. 配准阶段结论</h2>
+<ul>
+<li>两张图的 500 m 比例尺均已恢复为 500 CAD units。</li>
+<li>底图作为绝对基准锁定。</li>
+<li>参考图只用于空间判读，不再进行重复配准。</li>
+<li>禁止非等比例拉伸、透视变形和橡皮片式强制贴合。</li>
+</ul>
+<div class="warn"><b>经验：</b>老地形图与较新卫星现状图可能存在年代、制图概化和局部投影差异。不要为追求“视觉完全重合”破坏真实尺度。</div>
+</section>
+
+<section class="card">
+<h2>4. 现状用地图层体系</h2>
+<table>
+<tr><th>代码</th><th>类别</th></tr>
+<tr><td>R2</td><td>二类居住用地</td></tr>
+<tr><td>C1</td><td>行政管理用地</td></tr>
+<tr><td>C2</td><td>教育机构用地</td></tr>
+<tr><td>C3</td><td>文体科技用地</td></tr>
+<tr><td>C4</td><td>医疗保健用地</td></tr>
+<tr><td>C5</td><td>商业金融用地</td></tr>
+<tr><td>C6</td><td>集贸市场用地</td></tr>
+<tr><td>M1 / M2</td><td>一类 / 二类工业用地</td></tr>
+<tr><td>T1</td><td>公路交通用地</td></tr>
+<tr><td>S1 / S2</td><td>道路用地 / 广场用地</td></tr>
+<tr><td>U1 / U2 / U3</td><td>公用工程 / 环卫设施 / 防灾设施用地</td></tr>
+<tr><td>G1 / G2</td><td>公共绿地 / 防护绿地</td></tr>
+<tr><td>E1</td><td>水域</td></tr>
+<tr><td>村庄</td><td>村庄建设或村庄用地</td></tr>
+</table>
+</section>
+
+<section class="card">
+<h2>5. AutoLISP 辅助</h2>
+<ol>
+<li>将 LISP 保存为 UTF-8。</li>
+<li>AutoCAD 输入 <code>APPLOAD</code>。</li>
+<li>加载 <code>现状用地绘制工具.lsp</code>。</li>
+<li>运行 <code>XZYD_SETUP</code> 创建/检查图层和图例。</li>
+</ol>
+<p>中文建议：<code>LISPSYS = 1</code>，图例文字使用宋体或其他系统中文字体，优先采用 MTEXT。</p>
+<div class="note">图例对象最好统一放在“现状用地-图例”图层；色块用对象 TrueColor，这样便于整体移动、隐藏和置顶。</div>
+</section>
+
+<section class="card">
+<h2>6. 精确描边规则</h2>
+<ol>
+<li>放大原现状图，先确认真实色块边界。</li>
+<li>在 CAD 使用 <code>PLINE</code> 逐点描边。</li>
+<li>明显转折必须保留，不能用少数大节点粗略概括。</li>
+<li>最后输入 <code>C</code> 闭合。</li>
+<li>先检查边界，再填色。</li>
+<li>相邻图斑尽量共边，避免明显缝隙和重叠。</li>
+<li>道路、河流、桥梁、建成区边缘作为重要几何约束。</li>
+</ol>
+<div class="bad"><b>禁止：</b>用大三角形/梯形替代真实边界；跨越道路、河流；为了少节点而明显改变地块形状。</div>
+</section>
+
+<section class="card">
+<h2>7. 边界判断优先级</h2>
+<ol>
+<li><b>原现状图明确色块边缘</b></li>
+<li>道路边缘</li>
+<li>河流、水系边缘</li>
+<li>明显建成区边缘</li>
+<li>其他稳定地物</li>
+</ol>
+<p>仍无法可靠判断时，宁可暂时跳过，也不要强行绘制错误边界。</p>
+</section>
+
+<section class="card">
+<h2>8. 填充与绘图次序</h2>
+<pre>描边 → 闭合检查 → 图层检查 → SOLID填充 → Draw Order调整 → 局部校核</pre>
+<ul>
+<li>边界：闭合 Polyline。</li>
+<li>填充：SOLID HATCH。</li>
+<li>颜色：优先 ByLayer。</li>
+<li>Hatch 置于边界线下方，边界保持可见。</li>
+</ul>
+</section>
+
+<section class="card">
+<h2>9. 图例置顶</h2>
+<p>使用对象绘图次序，而不是“图层置顶”。</p>
+<pre>DRAWORDER → 选择图例对象 → Front（置于最前）</pre>
+<p>对象较多时，可先用 <code>QSELECT</code> 按“现状用地-图例”图层批量选择。</p>
+</section>
+
+<section class="card">
+<h2>10. Remote Desktop Commander 工作流</h2>
+<p>原生 Computer Use 出现 <code>Computer Use native pipe is unavailable</code> 后，改用 Remote Desktop Commander 作为本机文件、终端和进程控制桥梁。</p>
+<h3>启动</h3>
+<pre>npx -y @wonderwhy-er/desktop-commander@latest remote</pre>
+<p>出现 <code>Device ready</code> 后保持 PowerShell 窗口开启。</p>
+<ul>
+<li>ChatGPT 网页端可直接使用已连接的 Remote Desktop Commander。</li>
+<li>VS Code 中 Codex 的远程 MCP OAuth 曾出现兼容性问题，当前优先网页端。</li>
+<li>它适合文件、终端、脚本和进程控制；视觉描边仍应配合 AutoLISP 与人工校核。</li>
+</ul>
+</section>
+
+<section class="card">
+<h2>11. 推荐的 AI + CAD 分工</h2>
+<table>
+<tr><th>任务</th><th>推荐执行方式</th></tr>
+<tr><td>识别类别、图例、颜色</td><td>AI辅助</td></tr>
+<tr><td>建立图层、颜色、图例</td><td>AutoLISP / AI</td></tr>
+<tr><td>启动CAD、检查文件、运行脚本</td><td>Remote Desktop Commander</td></tr>
+<tr><td>复杂边界判读</td><td>人工为主，AI辅助</td></tr>
+<tr><td>闭合、Hatch、图层检查</td><td>AutoLISP / CAD命令</td></tr>
+<tr><td>最终精度核查</td><td>人工 + CAD测量</td></tr>
+</table>
+</section>
+
+<section class="card">
+<h2>12. 错误成果重绘流程</h2>
+<ol>
+<li>只删除上一轮错误生成的 Polyline、Hatch 和错误图斑。</li>
+<li>严禁删除原底图、参考图、图例和既有图层。</li>
+<li>回到原始现状参考图重新判读，不在错误成果基础上修修补补。</li>
+<li>建议分为北部、中北部、中部核心区、西部、南部、东南部逐区重绘。</li>
+<li>每完成一个分区立即对照原图校核。</li>
+</ol>
+<div class="note"><b>核心原则：</b>宁可少画，也不要画错。</div>
+</section>
+
+<section class="card">
+<h2>13. 保存策略</h2>
+<pre>01_底图与现状图精准配准.dwg        ← 原始基准，不覆盖
+04_现状用地重绘_清理完成.dwg      ← 错误成果删除后
+05_现状用地重绘_阶段成果.dwg      ← 分区完成后
+06_现状用地精准重绘.dwg           ← 最终成果</pre>
+</section>
+
+<section class="card">
+<h2>14. 最终检查清单</h2>
+<ul>
+<li>原底图、参考图未移动、未缩放、未重新配准。</li>
+<li>未重复创建同类图层。</li>
+<li>主要图斑均为闭合 Polyline。</li>
+<li>R2、工业、公共服务、绿地、水域边界与原图一致。</li>
+<li>高速、国道、河流两侧图斑不存在跨越错误。</li>
+<li>相邻图斑无明显重叠和大缝隙。</li>
+<li>Hatch 为 SOLID、ByLayer，并位于边界线下方。</li>
+<li>图例颜色、文字与实际图层一致。</li>
+<li>阶段成果和最终成果均已保存。</li>
+</ul>
+</section>
+
+<section class="card">
+<h2>15. 一句话工作法</h2>
+<div class="note"><b>底图锁定 → 原图判读 → 分图层逐区描边 → 闭合校核 → SOLID填充 → 分区复核 → 阶段保存 → 最终检查。</b></div>
+</section>
+
+<div class="footer">CAD现状用地矢量化工作流总结 · 总体规划作业</div>
+</div>
+</body>
+</html>
